@@ -1,13 +1,12 @@
-# filepath: .github/workflows/run-notion-automation.yml
 name: Run Notion Automation
 
 on:
   schedule:
     # Run every Sunday at 23:59
-    - cron: "20 13 * * 0"
+    - cron: "45 13 * * 0"
 
 jobs:
-  run-script:
+  run-script:  # Correctly define the job name
     runs-on: ubuntu-latest
 
     steps:
@@ -36,7 +35,7 @@ jobs:
 
       # Upload log file as an artifact
       - name: Upload log file
-        uses: actions/upload-artifact@v3.1.2
+        uses: actions/upload-artifact@v3
         with:
           name: notion-automation-log
           path: notion_automation/notion_automation.log
