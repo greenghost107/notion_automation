@@ -3,7 +3,7 @@ name: Run Notion Automation
 on:
   schedule:
     # Run every Sunday at 23:59
-    - cron: "0 18 * * 0"
+    - cron: "20 19 * * 0"
 
 jobs:
   run-script:  # Correctly define the job name
