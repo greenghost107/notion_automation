@@ -3,7 +3,7 @@ name: Run Notion Automation
 on:
   schedule:
     # Run every Sunday at 23:59
-    - cron: "20 19 * * 0"
+    - cron: "20 8 * * 0"
 
 jobs:
   run-script:  # Correctly define the job name
@@ -30,13 +30,6 @@ jobs:
       - name: Run Notion Automation
         env:
           SECRET_TOKEN: ${{ secrets.SECRET_TOKEN }}
-          DATABASE_ID: ${{ secrets.DATABASE_ID }}
+          TASKS_DATABASE_ID: ${{ secrets.TASKS_DATABASE_ID }}
+          LOGS_DATABASE_ID: ${{ secrets.LOGS_DATABASE_ID }}
         run: python notion_automation/notion_automation.py
-
-      # Upload log file as an artifact
-      - name: Upload log file
-        uses: actions/upload-artifact@942562b9c7d4b1f2557f1da21f4d3eb4eb4fd01f2ad78b2a6e187d1b193e0a0f
-        with:
-          name: notion-automation-log
-          path: notion_automation/notion_automation.log
-          retention-days: 30
