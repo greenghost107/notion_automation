@@ -2,6 +2,12 @@ import os
 from notion_client import Client
 from datetime import datetime
 
+
+# Conditionally load .env file only on Windows and locally
+if os.name == "nt" and os.getenv("GITHUB_ACTIONS") is None:  # Windows and not in GitHub Actions
+    from dotenv import load_dotenv
+    load_dotenv()
+
 # Initialize the Notion client using the integration token from environment variables
 notion = Client(auth=os.getenv("SECRET_TOKEN"))
 
@@ -17,9 +23,18 @@ def fetch_tasks(database_id):
 
 def delete_task(task):
     """Delete a task by archiving it if the 'Done' column is checked."""
-    # Check if the "Done" property exists and is checked
-    if task["properties"].get("Done", {}).get("checkbox", False):
-        notion.pages.update(page_id=task["id"], archived=True)
+    try:
+        # Debug: Log the task structure
+        print(f"Processing task: {task}")
+
+        # Check if the "Done" property exists and is checked
+        if task["properties"].get("Done", {}).get("checkbox", False):
+            notion.pages.update(page_id=task["id"], archived=True)
+            print(f"Task {task['id']} archived successfully.")
+        else:
+            print(f"Task {task['id']} not marked as done. Skipping.")
+    except Exception as e:
+        print(f"Error processing task {task['id']}: {e}")
 
 def log_to_notion(database_id, message):
     """Log a message to the Notion logs database."""
@@ -36,18 +51,19 @@ def main():
     try:
         # Fetch tasks from the tasks database
         tasks = fetch_tasks(TASKS_DATABASE_ID)
-        task_count = len(tasks)
+        task_count = 0
 
         # Delete tasks
         for task in tasks:
-            delete_task(task["id"])
+            print(f"Fetched task: {task}")
+            delete_task(task)
+            task_count += 1
 
         # Log the number of deleted tasks
         log_to_notion(LOGS_DATABASE_ID, f"{task_count} tasks were deleted successfully.")
-
     except Exception as e:
         # Log any errors to the logs database
         log_to_notion(LOGS_DATABASE_ID, f"Error occurred: {str(e)}")
-
+        
 if __name__ == "__main__":
     main()
