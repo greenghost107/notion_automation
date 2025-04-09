@@ -15,9 +15,11 @@ def fetch_tasks(database_id):
     response = notion.databases.query(database_id=database_id)
     return response.get("results", [])
 
-def delete_task(task_id):
-    """Delete a task by archiving it."""
-    notion.pages.update(page_id=task_id, archived=True)
+def delete_task(task):
+    """Delete a task by archiving it if the 'Done' column is checked."""
+    # Check if the "Done" property exists and is checked
+    if task["properties"].get("Done", {}).get("checkbox", False):
+        notion.pages.update(page_id=task["id"], archived=True)
 
 def log_to_notion(database_id, message):
     """Log a message to the Notion logs database."""
