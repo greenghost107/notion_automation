@@ -31,10 +31,13 @@ def delete_task(task):
         if task["properties"].get("Done", {}).get("checkbox", False):
             notion.pages.update(page_id=task["id"], archived=True)
             print(f"Task {task['id']} archived successfully.")
+            return True  # Task was deleted
         else:
             print(f"Task {task['id']} not marked as done. Skipping.")
+            return False  # Task was not deleted
     except Exception as e:
         print(f"Error processing task {task['id']}: {e}")
+        return False  # Task was not deleted due to an error
 
 def log_to_notion(database_id, message):
     """Log a message to the Notion logs database."""
@@ -51,19 +54,19 @@ def main():
     try:
         # Fetch tasks from the tasks database
         tasks = fetch_tasks(TASKS_DATABASE_ID)
-        task_count = 0
+        deleted_task_count = 0
 
         # Delete tasks
         for task in tasks:
             print(f"Fetched task: {task}")
-            delete_task(task)
-            task_count += 1
+            if delete_task(task): # Increment count only if the task was deleted
+                deleted_task_count += 1
 
         # Log the number of deleted tasks
-        log_to_notion(LOGS_DATABASE_ID, f"{task_count} tasks were deleted successfully.")
+        log_to_notion(LOGS_DATABASE_ID, f"{deleted_task_count} tasks were deleted successfully.")
     except Exception as e:
         # Log any errors to the logs database
         log_to_notion(LOGS_DATABASE_ID, f"Error occurred: {str(e)}")
-        
+
 if __name__ == "__main__":
     main()
