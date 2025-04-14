@@ -1,7 +1,10 @@
 import os
+import logging
 from notion_client import Client
-from datetime import datetime
+from datetime import datetime, timezone
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Conditionally load .env file only on Windows and locally
 if os.name == "nt" and os.getenv("GITHUB_ACTIONS") is None:  # Windows and not in GitHub Actions
@@ -9,46 +12,58 @@ if os.name == "nt" and os.getenv("GITHUB_ACTIONS") is None:  # Windows and not i
     load_dotenv()
 
 # Initialize the Notion client using the integration token from environment variables
-notion = Client(auth=os.getenv("SECRET_TOKEN"))
+SECRET_TOKEN = os.getenv("SECRET_TOKEN")
+if not SECRET_TOKEN:
+    raise EnvironmentError("SECRET_TOKEN is not set in the environment variables.")
+notion = Client(auth=SECRET_TOKEN)
 
 # Database IDs from environment variables
 TASKS_DATABASE_ID = os.getenv("TASKS_DATABASE_ID")
 LOGS_DATABASE_ID = os.getenv("LOGS_DATABASE_ID")
+if not TASKS_DATABASE_ID or not LOGS_DATABASE_ID:
+    raise EnvironmentError("TASKS_DATABASE_ID or LOGS_DATABASE_ID is not set in the environment variables.")
 
 
 def fetch_tasks(database_id):
     """Fetch tasks from the Notion database."""
-    response = notion.databases.query(database_id=database_id)
-    return response.get("results", [])
+    try:
+        response = notion.databases.query(database_id=database_id)
+        return response.get("results", [])
+    except Exception as e:
+        logging.error(f"Error fetching tasks from database {database_id}: {e}")
+        return []
 
 def delete_task(task):
     """Delete a task by archiving it if the 'Done' column is checked."""
     try:
-        # Debug: Log the task structure
-        print(f"Processing task: {task}")
+        logging.info(f"Processing task: {task}")
 
         # Check if the "Done" property exists and is checked
         if task["properties"].get("Done", {}).get("checkbox", False):
             notion.pages.update(page_id=task["id"], archived=True)
-            print(f"Task {task['id']} archived successfully.")
+            logging.info(f"Task {task['id']} archived successfully.")
             return True  # Task was deleted
         else:
-            print(f"Task {task['id']} not marked as done. Skipping.")
+            logging.info(f"Task {task['id']} not marked as done. Skipping.")
             return False  # Task was not deleted
     except Exception as e:
-        print(f"Error processing task {task['id']}: {e}")
+        logging.error(f"Error processing task {task['id']}: {e}")
         return False  # Task was not deleted due to an error
 
 def log_to_notion(database_id, message):
     """Log a message to the Notion logs database."""
-    timestamp = datetime.now().isoformat()
-    notion.pages.create(
-        parent={"database_id": database_id},
-        properties={
-            "Timestamp": {"date": {"start": timestamp}},
-            "Log Message": {"title": [{"text": {"content": message}}]},
-        },
-    )
+    try:
+        timestamp = datetime.now(timezone.utc).isoformat()
+        notion.pages.create(
+            parent={"database_id": database_id},
+            properties={
+                "Timestamp": {"date": {"start": timestamp}},
+                "Log Message": {"title": [{"text": {"content": message}}]},
+            },
+        )
+        logging.info(f"Logged message to Notion: {message}")
+    except Exception as e:
+        logging.error(f"Error logging message to Notion: {e}")
 
 def main():
     try:
@@ -67,6 +82,7 @@ def main():
     except Exception as e:
         # Log any errors to the logs database
         log_to_notion(LOGS_DATABASE_ID, f"Error occurred: {str(e)}")
+        logging.error(f"Error in main: {e}")
 
 if __name__ == "__main__":
     main()
